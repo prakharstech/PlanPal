@@ -3,7 +3,7 @@ from langchain_core.tools import Tool
 from langchain.chat_models import ChatOpenAI
 from dotenv import load_dotenv
 import os
-from backend.calendar_utilscalendar_utils import list_upcoming_events, book_event, delete_event, reschedule_event
+from backend.calendar_utils import list_upcoming_events, book_event, delete_event, reschedule_event
 import dateparser 
 from datetime import datetime
 
