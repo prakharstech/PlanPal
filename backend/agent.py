@@ -39,8 +39,8 @@ def book_event_tool_func(input: str):
             return "Error: Input must be in format 'Summary, Start Time, End Time'"
 
         summary, start_raw, end_raw = parts
-        start_dt = dateparser.parse(start_raw, settings={'TIMEZONE': 'Asia/Kolkata', 'TO_TIMEZONE': 'Asia/Kolkata','RETURN_AS_TIMEZONE_AWARE': True,'RELATIVE_BASE': get_local_now()})
-        end_dt = dateparser.parse(end_raw, settings={'TIMEZONE': 'Asia/Kolkata', 'TO_TIMEZONE': 'Asia/Kolkata','RETURN_AS_TIMEZONE_AWARE': True,'RELATIVE_BASE': get_local_now()})
+        start_dt = dateparser.parse(start_raw, settings={'TIMEZONE': 'Asia/Kolkata', 'TO_TIMEZONE': 'Asia/Kolkata'})
+        end_dt = dateparser.parse(end_raw, settings={'TIMEZONE': 'Asia/Kolkata', 'TO_TIMEZONE': 'Asia/Kolkata'})
 
         if not start_dt or not end_dt:
             return "Error: Couldn't parse start or end time."
