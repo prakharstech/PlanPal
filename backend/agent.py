@@ -6,6 +6,7 @@ import os
 from backend.calendar_utils import list_upcoming_events, book_event, delete_event, reschedule_event
 import dateparser 
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 load_dotenv()
 
@@ -21,6 +22,7 @@ llm = ChatOpenAI(
 
 def list_events_tool_func(_: str = ""):
     events = list_upcoming_events()
+    
     if not events:
         return "You have no upcoming events."
     response = "\n".join(
@@ -39,8 +41,16 @@ def book_event_tool_func(input: str):
             return "Error: Input must be in format 'Summary, Start Time, End Time'"
 
         summary, start_raw, end_raw = parts
-        start_dt = dateparser.parse(start_raw, settings={'TIMEZONE': 'Asia/Kolkata', 'TO_TIMEZONE': 'Asia/Kolkata'})
-        end_dt = dateparser.parse(end_raw, settings={'TIMEZONE': 'Asia/Kolkata', 'TO_TIMEZONE': 'Asia/Kolkata'})
+        settings={
+            'TIMEZONE': 'Asia/Kolkata',
+            'TO_TIMEZONE': 'Asia/Kolkata',
+            'RELATIVE_BASE': datetime.now(ZoneInfo("Asia/Kolkata")),
+            'RETURN_AS_TIMEZONE_AWARE': True,
+            'PREFER_DATES_FROM': 'future'
+        }
+        
+        start_dt = dateparser.parse(start_raw, settings=settings)
+        end_dt = dateparser.parse(end_raw, settings=settings)
 
         if not start_dt or not end_dt:
             return "Error: Couldn't parse start or end time."
@@ -91,9 +101,15 @@ def reschedule_event_tool_func(input: str):
             return "Error: Input must be in format 'Event ID, New Start Time, New End Time'"
 
         event_id, start_raw, end_raw = parts
-
-        start_time = dateparser.parse(start_raw)
-        end_time = dateparser.parse(end_raw)
+        settings={
+            'TIMEZONE': 'Asia/Kolkata',
+            'TO_TIMEZONE': 'Asia/Kolkata',
+            'RELATIVE_BASE': datetime.now(ZoneInfo("Asia/Kolkata")),
+            'RETURN_AS_TIMEZONE_AWARE': True,
+            'PREFER_DATES_FROM': 'future'
+        }
+        start_time = dateparser.parse(start_raw,settings=settings)
+        end_time = dateparser.parse(end_raw,settings=settings)
 
         if not start_time or not end_time:
             return "Error: Invalid start or end time."
@@ -109,6 +125,16 @@ def reschedule_event_tool_func(input: str):
     
 def casual_chat_tool_func(input: str):
     return "Hello! I can help you schedule, delete, or reschedule meetings. Try saying 'book a meeting tomorrow at 4pm'."
+
+
+def get_current_datetime(_):
+    return datetime.now().isoformat()
+
+current_datetime_tool = Tool(
+    name="CurrentDatetime",
+    func=get_current_datetime,
+    description="Returns the current datetime which decides when is tomorrow and today and day after tomorrow"
+)
 
 casual_chat_tool = Tool.from_function(
     func=casual_chat_tool_func,
@@ -136,18 +162,18 @@ delete_event_tool = Tool.from_function(
 list_events_tool = Tool.from_function(
     func=list_events_tool_func,
     name="check_availability",
-    description="Returns a list of upcoming events from the user's calendar. Takes no input."
+    description="First get get_current_datetime and Returns upcoming events. Then calculate the date and time required for whatever purpose and pass it in suitable function if required and book if available. Input can be 'today', 'tomorrow', or 'day after tomorrow' to filter. If the time of two events coincides don't book"
 )
 
 book_event_tool = Tool.from_function(
     func=book_event_tool_func,
     name="book_meeting",
-    description="Books a meeting. Input format: 'Summary, Start Time, End Time. Don't book if there is a conflict tell the user your this particular slot is occupied.'"
+    description="Books a meeting. Remember todays time and date book accordingly when user has asked you to book. Input format: 'Summary, Start Time, End Time. Don't book if there is a conflict tell the user your this particular slot is occupied.'"
 )
 
 
 agent_executor = initialize_agent(
-    tools=[list_events_tool, book_event_tool, delete_event_tool, reschedule_event_tool, casual_chat_tool],
+    tools=[list_events_tool, book_event_tool, delete_event_tool, reschedule_event_tool, casual_chat_tool, current_datetime_tool],
     llm=llm,
     agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
     verbose=True,
