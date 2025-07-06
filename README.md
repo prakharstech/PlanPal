@@ -1,4 +1,4 @@
-# 🧠 PlanPal – Your Conversational Calendar Assistant
+# 🧠 PlanPal – A Conversational Calendar Assistant
 
 PlanPal is an intelligent AI-powered assistant that helps you **book, reschedule, and cancel meetings** on your Google Calendar using natural language. Built using LangChain, FastAPI, Streamlit, and Google Calendar APIs, it offers a seamless conversational interface to manage your schedule.
 
