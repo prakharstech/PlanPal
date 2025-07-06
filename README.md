@@ -47,6 +47,7 @@ PlanPal is an intelligent AI-powered assistant that helps you **book, reschedule
 ```bash
 git clone https://github.com/yourusername/TailorTalk.git
 cd TailorTalk
+```
 
 2. **Set up virtual environment**
 
@@ -58,8 +59,7 @@ source .venv/bin/activate
 3. **Install dependencies**
 
 ```bash
-pip install -r backend/requirements.txt
-pip install -r frontend/requirements.txt
+pip install -r requirements.txt
 ```
 
 4. **Add your credentials**
@@ -76,7 +76,7 @@ cd ../frontend
 streamlit run app.py
 
 ## 📁 Project Structure
-
+```bash
 PlanPal/
 ├── backend/
 │   ├── main.py              # FastAPI app
@@ -85,6 +85,7 @@ PlanPal/
 │   ├── creds.json           # Service account (not committed)
 ├── frontend/
 │   ├── app.py               # Streamlit UI
-|── README.md
+│── README.md
 └── requirements.txt
+```
 
