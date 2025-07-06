@@ -103,6 +103,16 @@ def reschedule_event_tool_func(input: str):
 
     except Exception as e:
         return f"Error rescheduling event: {e}"
+    
+def casual_chat_tool_func(input: str):
+    return "Hello! I can help you schedule, delete, or reschedule meetings. Try saying 'book a meeting tomorrow at 4pm'."
+
+casual_chat_tool = Tool.from_function(
+    func=casual_chat_tool_func,
+    name="casual_chat",
+    description="Handles greetings or small talk like 'hi', 'hello', or 'what can you do?'"
+)
+
 
 
 reschedule_event_tool = Tool.from_function(
@@ -134,7 +144,7 @@ book_event_tool = Tool.from_function(
 
 
 agent_executor = initialize_agent(
-    tools=[list_events_tool, book_event_tool, delete_event_tool, reschedule_event_tool],
+    tools=[list_events_tool, book_event_tool, delete_event_tool, reschedule_event_tool, casual_chat_tool],
     llm=llm,
     agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
     verbose=True,
