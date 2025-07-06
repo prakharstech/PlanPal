@@ -10,10 +10,9 @@ PlanPal is an intelligent AI-powered assistant that helps you **book, reschedule
 
 ## 🚀 Live Demo
 
-🔗 Frontend: 
-🔗 Backend: 
+🔗 https://planpalproject.streamlit.app
 
-> ⚠️ First response might take 20–30 seconds if backend is waking up (Render free tier spins down inactive services).
+> ⚠️ First response might take a minute if backend is waking up (Render free tier spins down inactive services).
 
 ---
 
