@@ -1,0 +1,22 @@
+# Backend
+fastapi
+uvicorn
+
+# Frontend
+streamlit
+requests
+
+# Agent Framework
+langchain
+langchain-community
+openai
+
+# Google Calendar
+google-api-python-client
+google-auth
+google-auth-httplib2
+
+
+# Utilities
+python-dotenv
+dateparser

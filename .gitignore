@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Credentials
+backend/creds.json
+.env
+
+# Streamlit
+.streamlit/secrets.toml
+
+# System
+.DS_Store
