@@ -31,27 +31,46 @@ from dateutil.parser import parse as parse_datetime
 
 def book_event_tool_func(input: str):
     try:
-        # Split input: 'Summary, Start Time, End Time'
         parts = list(map(lambda s: s.strip().strip("'").strip('"'), input.split(",")))
         if len(parts) != 3:
             return "Error: Input must be in format 'Summary, Start Time, End Time'"
 
         summary, start_raw, end_raw = parts
-
-        # Use dateparser to support natural language like "tomorrow 6pm"
-        start_dt = dateparser.parse(start_raw)
-        end_dt = dateparser.parse(end_raw)
+        start_dt = dateparser.parse(start_raw, settings={'TIMEZONE': 'Asia/Kolkata', 'TO_TIMEZONE': 'Asia/Kolkata'})
+        end_dt = dateparser.parse(end_raw, settings={'TIMEZONE': 'Asia/Kolkata', 'TO_TIMEZONE': 'Asia/Kolkata'})
 
         if not start_dt or not end_dt:
             return "Error: Couldn't parse start or end time."
 
-        # Convert to RFC3339 format (required by Google Calendar)
-        start_time = start_dt.isoformat()
-        end_time = end_dt.isoformat()
+        # Convert to RFC3339
+        start_iso = start_dt.isoformat()
+        end_iso = end_dt.isoformat()
 
-        return book_event(summary, start_time, end_time)
+        # Fetch existing events
+        existing_events = list_upcoming_events()
+        for event in existing_events:
+            existing_start = event["start"].get("dateTime")
+            existing_end = event["end"].get("dateTime")
+
+            if not existing_start or not existing_end:
+                continue
+
+            existing_start_dt = datetime.fromisoformat(existing_start)
+            existing_end_dt = datetime.fromisoformat(existing_end)
+
+            # Check for overlap
+            if not (end_dt <= existing_start_dt or start_dt >= existing_end_dt):
+                return f"Cannot book: Conflicts with existing event. Please choose a different time'{event.get('summary', 'No Title')}' from {existing_start_dt.strftime('%I:%M %p')} to {existing_end_dt.strftime('%I:%M %p')}."
+
+        # No conflict — proceed
+        created_event = book_event(summary, start_iso, end_iso)
+        link = "https://calendar.google.com/calendar/embed?src=prakhar.srivastava0509%40gmail.com&ctz=Asia%2FKolkata"
+        return f"Meeting booked from {start_dt.strftime('%I:%M %p')} to {end_dt.strftime('%I:%M %p')}.\n[View Event]({link} provide this link to the user)" if link else "Meeting booked successfully."
+
     except Exception as e:
-        return f"Error parsing input: {e}"
+        return f"Error booking event: {e}"
+
+
     
 def delete_event_tool_func(input: str):
     try:
@@ -110,7 +129,7 @@ list_events_tool = Tool.from_function(
 book_event_tool = Tool.from_function(
     func=book_event_tool_func,
     name="book_meeting",
-    description="Books a meeting. Input format: 'Summary, Start Time, End Time'"
+    description="Books a meeting. Input format: 'Summary, Start Time, End Time. Don't book if there is a conflict tell the user your this particular slot is occupied'"
 )
 
 
