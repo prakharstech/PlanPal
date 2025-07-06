@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
-from agent import run_agent  # import your LangChain agent runner
+from backend.agent import run_agent  # import your LangChain agent runner
 import uvicorn
 
 app = FastAPI()
