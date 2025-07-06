@@ -45,8 +45,8 @@ PlanPal is an intelligent AI-powered assistant that helps you **book, reschedule
 1. **Clone the repo**
 
 ```bash
-git clone https://github.com/yourusername/TailorTalk.git
-cd TailorTalk
+git clone https://github.com/prakharstech/PlanPal
+cd PlanPal
 ```
 
 2. **Set up virtual environment**
