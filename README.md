@@ -64,16 +64,22 @@ pip install -r requirements.txt
 
 4. **Add your credentials**
 
-Place your creds.json in backend/
-Or store Google credentials securely using .env or Render secrets
+- Place your creds.json in backend/
+- Or store Google credentials securely using .env or Render secrets
 
 5. **Run the backend**
+
+```bash
 cd backend
-uvicorn main:app --reload
+fastapi dev main.py
+```
 
 6. **Run the frontend**
+
+```bash
 cd ../frontend
 streamlit run app.py
+```
 
 ## 📁 Project Structure
 ```bash
