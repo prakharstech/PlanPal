@@ -9,6 +9,9 @@ from datetime import datetime
 
 load_dotenv()
 
+def get_local_now():
+    return datetime.now()  
+
 llm = ChatOpenAI(
     temperature=0.7,
     model="openai/gpt-4o-mini",
@@ -36,8 +39,8 @@ def book_event_tool_func(input: str):
             return "Error: Input must be in format 'Summary, Start Time, End Time'"
 
         summary, start_raw, end_raw = parts
-        start_dt = dateparser.parse(start_raw, settings={'TIMEZONE': 'Asia/Kolkata', 'TO_TIMEZONE': 'Asia/Kolkata'})
-        end_dt = dateparser.parse(end_raw, settings={'TIMEZONE': 'Asia/Kolkata', 'TO_TIMEZONE': 'Asia/Kolkata'})
+        start_dt = dateparser.parse(start_raw, settings={'TIMEZONE': 'Asia/Kolkata', 'TO_TIMEZONE': 'Asia/Kolkata','RETURN_AS_TIMEZONE_AWARE': True,'RELATIVE_BASE': get_local_now()})
+        end_dt = dateparser.parse(end_raw, settings={'TIMEZONE': 'Asia/Kolkata', 'TO_TIMEZONE': 'Asia/Kolkata','RETURN_AS_TIMEZONE_AWARE': True,'RELATIVE_BASE': get_local_now()})
 
         if not start_dt or not end_dt:
             return "Error: Couldn't parse start or end time."
@@ -139,7 +142,7 @@ list_events_tool = Tool.from_function(
 book_event_tool = Tool.from_function(
     func=book_event_tool_func,
     name="book_meeting",
-    description="Books a meeting. Input format: 'Summary, Start Time, End Time. Don't book if there is a conflict tell the user your this particular slot is occupied'"
+    description="Books a meeting. Input format: 'Summary, Start Time, End Time. Don't book if there is a conflict tell the user your this particular slot is occupied.'"
 )
 
 
