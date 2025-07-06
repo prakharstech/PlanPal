@@ -19,7 +19,7 @@ if prompt:
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            res = requests.post("http://localhost:8000/agent", json={"message": prompt})
+            res = requests.post("https://planpal-lrka.onrender.com/agent", json={"message": prompt})
             reply = res.json().get("response", "Something went wrong.")
             st.markdown(reply)
             st.session_state.messages.append({"role": "assistant", "content": reply})
