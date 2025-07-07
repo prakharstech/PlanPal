@@ -133,7 +133,8 @@ def get_current_datetime(_):
 current_datetime_tool = Tool(
     name="current_datetime",
     func=get_current_datetime,
-    description="Returns the current datetime which decides when is tomorrow and today and day after tomorrow"
+    description="""Returns the **current datetime** (with timezone awareness).
+⚠️ Must be called BEFORE interpreting time inputs like 'today', 'tomorrow', or 'day after tomorrow'."""
 )
 
 casual_chat_tool = Tool.from_function(
