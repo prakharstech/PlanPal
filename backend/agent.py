@@ -168,9 +168,12 @@ list_events_tool = Tool.from_function(
 book_event_tool = Tool.from_function(
     func=book_event_tool_func,
     name="book_meeting",
-    description="Books a meeting. Remember todays time and date book accordingly when user has asked you to book. Input format: 'Summary, Start Time, End Time. Don't book if there is a conflict tell the user your this particular slot is occupied.'"
+    description="""Books a meeting. 
+Input format: 'Summary, Start Time, End Time'. 
+Start and end time should be in natural language (e.g., '10 July 2025 at 5pm', 'tomorrow at 6pm').
+Do not book if there is a conflict — tell the user which event overlaps and at what time.
+Respect the time requested by the user. Never default to 9 AM or any other time unless explicitly asked.'"""
 )
-
 
 agent_executor = initialize_agent(
     tools=[list_events_tool, book_event_tool, delete_event_tool, reschedule_event_tool, casual_chat_tool, current_datetime_tool],
