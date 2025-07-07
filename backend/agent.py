@@ -162,7 +162,7 @@ delete_event_tool = Tool.from_function(
 list_events_tool = Tool.from_function(
     func=list_events_tool_func,
     name="check_availability",
-    description="First get get_current_datetime and Returns upcoming events. Then calculate the date and time required for whatever purpose and pass it in suitable function if required and book if available. Input can be 'today', 'tomorrow', or 'day after tomorrow' to filter. If the time of two events coincides don't book"
+    description="First get today's date and time and Return upcoming events. Then calculate the date and time required for whatever purpose and pass it in suitable function if required and book if available. Input can be 'today', 'tomorrow', or 'day after tomorrow' to filter. If the time of two events coincides don't book"
 )
 
 book_event_tool = Tool.from_function(
