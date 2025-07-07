@@ -131,7 +131,7 @@ def get_current_datetime(_):
     return datetime.now().isoformat()
 
 current_datetime_tool = Tool(
-    name="CurrentDatetime",
+    name="current_datetime",
     func=get_current_datetime,
     description="Returns the current datetime which decides when is tomorrow and today and day after tomorrow"
 )
