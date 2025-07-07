@@ -127,7 +127,7 @@ def casual_chat_tool_func(input: str):
     return "Hello! I can help you schedule, delete, or reschedule meetings. Try saying 'book a meeting tomorrow at 4pm'."
 
 
-def get_current_datetime():
+def get_current_datetime(_):
     return datetime.now().isoformat()
 
 current_datetime_tool = Tool(
