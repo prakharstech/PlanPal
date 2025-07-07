@@ -168,11 +168,12 @@ list_events_tool = Tool.from_function(
 book_event_tool = Tool.from_function(
     func=book_event_tool_func,
     name="book_meeting",
-    description="""Books a meeting. 
-Input format: 'Summary, Start Time, End Time'. 
-Start and end time should be in natural language (e.g., '10 July 2025 at 5pm', 'tomorrow at 6pm').
-Do not book if there is a conflict — tell the user which event overlaps and at what time.
-Respect the time requested by the user. Never default to 9 AM or any other time unless explicitly asked.'"""
+    description="""Books a meeting on the user's calendar.
+
+✅ Input: 'Summary, Start Time, End Time'.
+🧠 Check for actual datetime overlaps — only events with the **same date and overlapping times** are conflicts.
+🛑 Never treat events on different dates (e.g., July 9 and July 10) as conflicts.
+⏰ Times must be parsed exactly from user input (e.g., '10 July 2025 at 5pm').'"""
 )
 
 agent_executor = initialize_agent(
