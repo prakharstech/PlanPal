@@ -140,7 +140,7 @@ current_datetime_tool = Tool(
 casual_chat_tool = Tool.from_function(
     func=casual_chat_tool_func,
     name="casual_chat",
-    description="Handles greetings or small talk like 'hi', 'hello', or 'what can you do?'"
+    description="Handles greetings or small talk like 'hi', 'hello', or 'what can you do?'. Also you can casually chat with the user apart from what the casual chat function returns you can propmt, tell or ask them if you are not clear about anything"
 )
 
 
