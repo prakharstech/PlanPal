@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
-from backend.agent import run_agent  # import your LangChain agent runner
+from backend.agent import run_agent 
 import uvicorn
 
 app = FastAPI()
@@ -10,7 +10,6 @@ class Query(BaseModel):
 
 @app.get("/")
 def run_cron_task():
-    # Your scheduled logic here
     print("Cron job triggered!")
     return {"message": "Cron job executed"}
 
