@@ -8,6 +8,12 @@ app = FastAPI()
 class Query(BaseModel):
     message: str
 
+@app.get("/")
+def run_cron_task():
+    # Your scheduled logic here
+    print("Cron job triggered!")
+    return {"message": "Cron job executed"}
+
 @app.post("/agent")
 async def calendar_agent(query: Query):
     try:
