@@ -1,4 +1,4 @@
-from langchain.agents import initialize_agent, AgentType
+from langchain.agents import initialize_agent, AgentType, AgentExecutor
 from langchain_core.tools import Tool
 from langchain.chat_models import ChatOpenAI
 from dotenv import load_dotenv
@@ -177,16 +177,31 @@ book_event_tool = Tool.from_function(
 ⏰ Times must be parsed exactly from user input (e.g., '10 July 2025 at 5pm').'"""
 )
 
-agent_executor = initialize_agent(
-    tools=[list_events_tool, book_event_tool, delete_event_tool, reschedule_event_tool, casual_chat_tool, current_datetime_tool],
-    llm=llm,
-    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-    verbose=True,
-    handle_parsing_errors=True
-)
+_agent_executor: AgentExecutor = None
+def get_agent():
+    global _agent_executor
+    if _agent_executor is None:
+        tools = [
+            list_events_tool,
+            book_event_tool,
+            delete_event_tool,
+            reschedule_event_tool,
+            casual_chat_tool,
+            current_datetime_tool
+        ]
+        _agent_executor = initialize_agent(
+            tools=tools,
+            llm=llm,
+            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            verbose=True,
+            handle_parsing_errors=True
+        )
+    return _agent_executor
 
 def run_agent(prompt: str):
     try:
-        return agent_executor.run(prompt)
+        agent = get_agent()
+        return agent.run(prompt)
     except Exception as e:
         return f"Sorry, I encountered an error: {str(e)}"
+
