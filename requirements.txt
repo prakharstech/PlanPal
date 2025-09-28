@@ -10,6 +10,7 @@ requests
 langchain
 langchain-community
 openai
+langchain-mistralai
 
 # Google Calendar
 google-api-python-client

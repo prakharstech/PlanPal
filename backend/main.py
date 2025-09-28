@@ -1,13 +1,27 @@
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
-from backend.agent import run_agent  # import your LangChain agent runner
+from fastapi.middleware.cors import CORSMiddleware
+from agent import run_agent  
 import uvicorn
 
 app = FastAPI()
 
 class Query(BaseModel):
     message: str
+origins = [
+    "http://localhost",
+    "http://localhost:3000", # Default for create-react-app
+    "http://localhost:5173", # Default for Vite
+]
 
+# CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"], # Allow all methods (GET, POST, etc.)
+    allow_headers=["*"], # Allow all headers
+)
 @app.post("/agent")
 async def calendar_agent(query: Query):
     try:

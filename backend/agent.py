@@ -1,23 +1,27 @@
-from langchain.agents import initialize_agent, AgentType
+from langchain.agents import initialize_agent, AgentType, AgentExecutor
 from langchain_core.tools import Tool
-from langchain.chat_models import ChatOpenAI
+from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
+from langchain_mistralai.chat_models import ChatMistralAI
+from langchain.tools import tool
 from dotenv import load_dotenv
 import os
-from backend.calendar_utils import list_upcoming_events, book_event, delete_event, reschedule_event
+from calendar_utils import list_upcoming_events, book_event, delete_event, reschedule_event
 import dateparser 
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from langchain.agents import create_tool_calling_agent
+from langchain_core.prompts import ChatPromptTemplate
 
 load_dotenv()
 
 def get_local_now():
     return datetime.now()  
 
-llm = ChatOpenAI(
+llm = ChatMistralAI(
     temperature=0.7,
-    model="openai/gpt-4o-mini",
-    openai_api_key=os.getenv("OPENAI_API_KEY"),
-    openai_api_base=os.getenv("OPENAI_BASE_URL")
+    model="mistral-large-latest", # Or any other Mistral model you prefer
+    mistral_api_key=os.getenv("MISTRAL_API_KEY"),
 )
 
 def list_events_tool_func(_: str = ""):
@@ -25,12 +29,28 @@ def list_events_tool_func(_: str = ""):
     
     if not events:
         return "You have no upcoming events."
-    response = "\n".join(
-    f"'{e.get('summary', 'No Title')}' (ID: {e['id']}) from {e['start'].get('dateTime', e['start'].get('date'))} to {e['end'].get('dateTime', e['end'].get('date'))}"
-    for e in events
-)
 
-    return response
+    formatted_events = []
+    for e in events:
+        summary = e.get('summary', 'No Title')
+        event_id = e['id']
+        
+        # Parse start and end times
+        start_str = e['start'].get('dateTime', e['start'].get('date'))
+        end_str = e['end'].get('dateTime', e['end'].get('date'))
+        
+        # Convert to datetime objects and format them
+        try:
+            start_dt = datetime.fromisoformat(start_str)
+            end_dt = datetime.fromisoformat(end_str)
+            time_range = f"{start_dt.strftime('%I:%M %p')} to {end_dt.strftime('%I:%M %p')}"
+        except ValueError:
+            # Handle all-day events that don't have a time
+            time_range = "All day"
+
+        formatted_events.append(f"- **{summary}**: {time_range} (ID: {event_id})")
+
+    return "\n".join(formatted_events)
 
 from dateutil.parser import parse as parse_datetime
 
@@ -78,7 +98,8 @@ def book_event_tool_func(input: str):
         # No conflict — proceed
         created_event = book_event(summary, start_iso, end_iso)
         link = "https://calendar.google.com/calendar/embed?src=prakhar.srivastava0509%40gmail.com&ctz=Asia%2FKolkata"
-        return f"Meeting booked from {start_dt.strftime('%I:%M %p')} to {end_dt.strftime('%I:%M %p')}.\n[View Event]({link} provide this link to the user)" if link else "Meeting booked successfully."
+        # NEW, CORRECTED VERSION
+        return f"Meeting booked from {start_dt.strftime('%I:%M %p')} to {end_dt.strftime('%I:%M %p')}. [View Event]({link})" if link else "Meeting booked successfully."
 
     except Exception as e:
         return f"Error booking event: {e}"
@@ -162,7 +183,7 @@ delete_event_tool = Tool.from_function(
 list_events_tool = Tool.from_function(
     func=list_events_tool_func,
     name="check_availability",
-    description="First get get_current_datetime and Returns upcoming events. Then calculate the date and time required for whatever purpose and pass it in suitable function if required and book if available. Input can be 'today', 'tomorrow', or 'day after tomorrow' to filter. If the time of two events coincides don't book"
+    description="First get today's date and time and Returns upcoming events. Then calculate the date and time required for whatever purpose and pass it in suitable function if required and book if available. Input can be 'today', 'tomorrow', or 'day after tomorrow' to filter. If the time of two events coincides don't book"
 )
 
 book_event_tool = Tool.from_function(
@@ -175,17 +196,60 @@ book_event_tool = Tool.from_function(
 🛑 Never treat events on different dates (e.g., July 9 and July 10) as conflicts.
 ⏰ Times must be parsed exactly from user input (e.g., '10 July 2025 at 5pm').'"""
 )
+_agent_executor: AgentExecutor = None
+def get_agent():
+    global _agent_executor
+    if _agent_executor is None:
+        tools = [
+            list_events_tool,
+            book_event_tool,
+            delete_event_tool,
+            reschedule_event_tool,
+            casual_chat_tool,
+            current_datetime_tool
+        ]
 
-agent_executor = initialize_agent(
-    tools=[list_events_tool, book_event_tool, delete_event_tool, reschedule_event_tool, casual_chat_tool, current_datetime_tool],
-    llm=llm,
-    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-    verbose=True,
-    handle_parsing_errors=True
-)
+        # A prompt for the tool-calling agent
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are an expert calendar assistant. You have one goal: to help the user manage their schedule efficiently.
+
+**Your Reasoning Process Must Follow These Rules:**
+
+1.  **For Vague Schedule Requests (e.g., "what's my schedule?"):**
+    - Your immediate and ONLY action is to call the `check_availability` tool ONCE.
+    - Do NOT try to guess different days. The tool automatically lists all upcoming events.
+
+2.  **For Specific Actions with Relative Dates (e.g., "book a meeting tomorrow at 5pm"):**
+    - Your FIRST action MUST be to call `current_datetime` to understand what "tomorrow" means.
+    - After you have the current date, you can THEN call other tools like `book_meeting` with the correctly calculated date and time.
+
+Always be direct and efficient. Do not make assumptions beyond these rules."""),
+            ("user", "{input}"),
+            ("placeholder", "{agent_scratchpad}"),
+        ])
+        llm_with_tools = llm.bind_tools(tools)
+        # Create the tool-calling agent
+        agent = create_tool_calling_agent(
+            llm=llm_with_tools,
+            tools=tools,
+            prompt=prompt,
+        )
+
+        # The AgentExecutor remains the same
+        _agent_executor = AgentExecutor(
+            agent=agent,
+            tools=tools,
+            verbose=True,
+        )
+
+    return _agent_executor
 
 def run_agent(prompt: str):
     try:
-        return agent_executor.run(prompt)
+        agent = get_agent()
+        # Use .invoke() which returns a dictionary
+        result = agent.invoke({"input": prompt})
+        # The actual response is in the 'output' key
+        return result.get("output", "I'm sorry, I didn't get a response.")
     except Exception as e:
         return f"Sorry, I encountered an error: {str(e)}"
