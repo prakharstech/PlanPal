@@ -6,7 +6,7 @@ from langchain_mistralai.chat_models import ChatMistralAI
 from langchain.tools import tool
 from dotenv import load_dotenv
 import os
-from calendar_utils import list_upcoming_events, book_event, delete_event, reschedule_event
+from backend.calendar_utils import list_upcoming_events, book_event, delete_event, reschedule_event
 import dateparser 
 from datetime import datetime
 from zoneinfo import ZoneInfo

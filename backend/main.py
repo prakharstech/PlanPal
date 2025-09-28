@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from agent import run_agent  
+from backend.agent import run_agent  
 import uvicorn
 
 app = FastAPI()
@@ -12,6 +12,7 @@ origins = [
     "http://localhost",
     "http://localhost:3000", # Default for create-react-app
     "http://localhost:5173", # Default for Vite
+    "https://planpal-lrka.onrender.com"
 ]
 
 # CORSMiddleware
