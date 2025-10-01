@@ -43,7 +43,7 @@ SCOPES = [
     'https://www.googleapis.com/auth/userinfo.profile'
 ]
 
-CLIENT_SECRET_FILE = './client_secret.json'
+CLIENT_SECRET_FILE = 'backend/client_secret.json'
 
 
 # --- API Endpoints ---
