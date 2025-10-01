@@ -12,6 +12,7 @@ venv/
 # Credentials
 backend/creds.json
 .env
+backend/client_secret.json
 
 # Streamlit
 .streamlit/secrets.toml

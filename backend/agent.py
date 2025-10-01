@@ -6,12 +6,13 @@ from langchain_mistralai.chat_models import ChatMistralAI
 from langchain.tools import tool
 from dotenv import load_dotenv
 import os
-from backend.calendar_utils import list_upcoming_events, book_event, delete_event, reschedule_event
+from backend.calendar_utils import list_upcoming_events, book_event, delete_event, reschedule_event, get_calendar_service
 import dateparser 
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from langchain.agents import create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate
+from collections import defaultdict
 
 load_dotenv()
 
@@ -20,47 +21,65 @@ def get_local_now():
 
 llm = ChatMistralAI(
     temperature=0.7,
-    model="mistral-large-latest", # Or any other Mistral model you prefer
+    model="mistral-large-latest",
     mistral_api_key=os.getenv("MISTRAL_API_KEY"),
 )
 
-def list_events_tool_func(_: str = ""):
-    events = list_upcoming_events()
-    
+def list_events_tool_func(input: str = "", service=None):
+    if not service:
+        return "Error: Authentication service not provided."
+    events = list_upcoming_events(service)
     if not events:
         return "You have no upcoming events."
 
-    formatted_events = []
+    #Group events by their date
+    grouped_events = defaultdict(list)
     for e in events:
-        summary = e.get('summary', 'No Title')
-        event_id = e['id']
-        
-        # Parse start and end times
         start_str = e['start'].get('dateTime', e['start'].get('date'))
-        end_str = e['end'].get('dateTime', e['end'].get('date'))
-        
-        # Convert to datetime objects and format them
         try:
             start_dt = datetime.fromisoformat(start_str)
-            end_dt = datetime.fromisoformat(end_str)
-            time_range = f"{start_dt.strftime('%I:%M %p')} to {end_dt.strftime('%I:%M %p')}"
-        except ValueError:
-            # Handle all-day events that don't have a time
-            time_range = "All day"
+            date_key = start_dt.strftime('%A, %B %d, %Y')
+            grouped_events[date_key].append(e)
+        except (ValueError, TypeError):
+            continue
 
-        formatted_events.append(f"- **{summary}**: {time_range} (ID: {event_id})")
+    if not grouped_events:
+        return "No events with valid dates found."
 
-    return "\n".join(formatted_events)
+    # 3. Build the final formatted string with date headings
+    response_parts = []
+    for date, daily_events in sorted(grouped_events.items()):
+        response_parts.append(f"### {date}") # This creates a date heading
+        for event in daily_events:
+            summary = event.get('summary', 'No Title')
+            start_str = event['start'].get('dateTime')
+            end_str = event['end'].get('dateTime')
+            event_id = event.get('id') # Get the event ID
+
+            if start_str and end_str:
+                start_dt = datetime.fromisoformat(start_str)
+                end_dt = datetime.fromisoformat(end_str)
+                time_range = f"{start_dt.strftime('%I:%M %p')} - {end_dt.strftime('%I:%M %p')}"
+            else:
+                time_range = "All Day"
+            
+            # Append the event with its ID
+            response_parts.append(f"- **{summary}**: {time_range} (ID: {event_id})")
+    
+    return "\n".join(response_parts)
+
 
 from dateutil.parser import parse as parse_datetime
 
-def book_event_tool_func(input: str):
+def book_event_tool_func(input: str, service=None):
+    if not service:
+        return "Error: Authentication service not provided."
     try:
         parts = list(map(lambda s: s.strip().strip("'").strip('"'), input.split(",")))
         if len(parts) != 3:
             return "Error: Input must be in format 'Summary, Start Time, End Time'"
 
-        summary, start_raw, end_raw = parts
+        summary, start_raw, end_raw = [p.strip().strip("'").strip('"') for p in parts]
         settings={
             'TIMEZONE': 'Asia/Kolkata',
             'TO_TIMEZONE': 'Asia/Kolkata',
@@ -74,14 +93,13 @@ def book_event_tool_func(input: str):
 
         if not start_dt or not end_dt:
             return "Error: Couldn't parse start or end time."
-
-        # Convert to RFC3339
+        
         start_iso = start_dt.isoformat()
         end_iso = end_dt.isoformat()
-
-        # Fetch existing events
-        existing_events = list_upcoming_events()
+        
+        existing_events = list_upcoming_events(service) # Use the provided service
         for event in existing_events:
+            # ... (conflict checking logic is the same)
             existing_start = event["start"].get("dateTime")
             existing_end = event["end"].get("dateTime")
 
@@ -95,28 +113,29 @@ def book_event_tool_func(input: str):
             if not (end_dt <= existing_start_dt or start_dt >= existing_end_dt):
                 return f"Cannot book: Conflicts with existing event. Please choose a different time'{event.get('summary', 'No Title')}' from {existing_start_dt.strftime('%I:%M %p')} to {existing_end_dt.strftime('%I:%M %p')}."
 
-        # No conflict — proceed
-        created_event = book_event(summary, start_iso, end_iso)
+
+        created_event = book_event(service, summary, start_iso, end_iso) # Use the provided service
         link = "https://calendar.google.com/calendar/embed?src=prakhar.srivastava0509%40gmail.com&ctz=Asia%2FKolkata"
-        # NEW, CORRECTED VERSION
-        return f"Meeting booked from {start_dt.strftime('%I:%M %p')} to {end_dt.strftime('%I:%M %p')}. [View Event]({link})" if link else "Meeting booked successfully."
+        return f"Meeting booked from {start_dt.strftime('%I:%M %p')} to {end_dt.strftime('%I:%M %p')}." if link else "Meeting booked successfully."
 
     except Exception as e:
         return f"Error booking event: {e}"
 
-
     
-def delete_event_tool_func(input: str):
+def delete_event_tool_func(input: str, service=None):
+    if not service:
+        return "Error: Authentication service not provided."
     try:
         event_id = input.strip().strip("'").strip('"')
-        return delete_event(event_id)
+        return delete_event(service, event_id) 
     except Exception as e:
         return f"Error deleting event: {e}"
 
 
-def reschedule_event_tool_func(input: str):
+def reschedule_event_tool_func(input: str, service=None):
+    if not service:
+        return "Error: Authentication service not provided."
     try:
-        # Expected format: 'Event ID, New Start Time, New End Time'
         parts = list(map(lambda s: s.strip().strip("'").strip('"'), input.split(",")))
         if len(parts) != 3:
             return "Error: Input must be in format 'Event ID, New Start Time, New End Time'"
@@ -134,13 +153,10 @@ def reschedule_event_tool_func(input: str):
 
         if not start_time or not end_time:
             return "Error: Invalid start or end time."
-
-        # Convert to RFC3339 (ISO format + timezone)
+        
         start_iso = start_time.isoformat()
         end_iso = end_time.isoformat()
-
-        return reschedule_event(event_id, start_iso, end_iso)
-
+        return reschedule_event(service, event_id, start_iso, end_iso) # Pass the service
     except Exception as e:
         return f"Error rescheduling event: {e}"
     
@@ -165,91 +181,91 @@ casual_chat_tool = Tool.from_function(
 
 
 
-reschedule_event_tool = Tool.from_function(
-    func=reschedule_event_tool_func,
-    name="reschedule_event",
-    description="Reschedules an event. Input format: 'Event ID, New Start Time, New End Time'. Time can be natural (e.g., 'tomorrow 6pm')"
-)
-
-
-
-delete_event_tool = Tool.from_function(
-    func=delete_event_tool_func,
-    name="delete_event",
-    description="Deletes an event. Input format: 'Event ID'"
-)
-
-
-list_events_tool = Tool.from_function(
-    func=list_events_tool_func,
-    name="check_availability",
-    description="First get today's date and time and Returns upcoming events. Then calculate the date and time required for whatever purpose and pass it in suitable function if required and book if available. Input can be 'today', 'tomorrow', or 'day after tomorrow' to filter. If the time of two events coincides don't book"
-)
-
-book_event_tool = Tool.from_function(
-    func=book_event_tool_func,
-    name="book_meeting",
-    description="""Books a meeting on the user's calendar.
+def create_agent_executor(service):
+    """Creates a new AgentExecutor with tools that use the provided service."""
+    
+    # Redefine tools inside this function to capture the 'service' object
+    tools = [
+        Tool(
+            name="check_availability",
+            func=lambda q: list_events_tool_func(q, service=service),
+            description="First get today's date and time and Returns upcoming events. Then calculate the date and time required for whatever purpose and pass it in suitable function if required and book if available. Input can be 'today', 'tomorrow', or 'day after tomorrow' to filter. If the time of two events coincides don't book"
+        ),
+        Tool(
+            name="book_meeting",
+            func=lambda q: book_event_tool_func(q, service=service),
+            description="""Books a meeting on the user's calendar.
 
 ✅ Input: 'Summary, Start Time, End Time'.
 🧠 Check for actual datetime overlaps — only events with the **same date and overlapping times** are conflicts.
 🛑 Never treat events on different dates (e.g., July 9 and July 10) as conflicts.
 ⏰ Times must be parsed exactly from user input (e.g., '10 July 2025 at 5pm').'"""
-)
-_agent_executor: AgentExecutor = None
-def get_agent():
-    global _agent_executor
-    if _agent_executor is None:
-        tools = [
-            list_events_tool,
-            book_event_tool,
-            delete_event_tool,
-            reschedule_event_tool,
-            casual_chat_tool,
-            current_datetime_tool
-        ]
+        ),
+        Tool(
+            name="delete_event",
+            func=lambda q: delete_event_tool_func(q, service=service),
+            description="Deletes an event. Input format: 'Event ID'"
+        ),
+        Tool(
+            name="reschedule_event",
+            func=lambda q: reschedule_event_tool_func(q, service=service),
+            description="Reschedules an event. Input format: 'Event ID, New Start Time, New End Time'. Time can be natural (e.g., 'tomorrow 6pm')"
+        ),
+        casual_chat_tool,
+        current_datetime_tool,
+    ]
 
-        # A prompt for the tool-calling agent
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert calendar assistant. You have one goal: to help the user manage their schedule efficiently.
+    prompt = ChatPromptTemplate.from_messages([
+    ("system", """You are PlanPal, a hyper-efficient and meticulous AI calendar assistant. 
+Your sole purpose is to accurately and efficiently manage a user's Google Calendar by calling the provided tools. You are stateless and have no memory of past conversations.
 
-**Your Reasoning Process Must Follow These Rules:**
+**Your Golden Rules of Operation:**
 
-1.  **For Vague Schedule Requests (e.g., "what's my schedule?"):**
-    - Your immediate and ONLY action is to call the `check_availability` tool ONCE.
-    - Do NOT try to guess different days. The tool automatically lists all upcoming events.
+1.  **Time is Always First:** For any request involving relative dates (like "today", "tomorrow"), your absolute first step **must** be to call the `current_datetime` tool. This establishes the ground truth for all subsequent actions.
 
-2.  **For Specific Actions with Relative Dates (e.g., "book a meeting tomorrow at 5pm"):**
-    - Your FIRST action MUST be to call `current_datetime` to understand what "tomorrow" means.
-    - After you have the current date, you can THEN call other tools like `book_meeting` with the correctly calculated date and time.
+2.  **Trust the Tool's Signature:** You must meticulously follow the input format specified in each tool's description. 
+    - **CRITICAL:** For the `book_meeting` tool, the input format is `'Summary, Start Time, End Time'`. The summary is everything before the final two commas. For example, if the user says "Book a meeting for 'Team Sync, Project Alpha' tomorrow at 4pm for one hour", your tool input should be `'Team Sync, Project Alpha', 'tomorrow 4pm', 'tomorrow 5pm'`.
 
-Always be direct and efficient. Do not make assumptions beyond these rules."""),
-            ("user", "{input}"),
-            ("placeholder", "{agent_scratchpad}"),
-        ])
-        llm_with_tools = llm.bind_tools(tools)
+3.  **Tool Output is Reality:** Your final response to the user must be based **exclusively** on the direct output of the tools you have just called in the current turn. 
+    - **DO NOT** add information that is not present in the tool output.
+    - **DO NOT** invent warnings or infer potential conflicts if the `book_meeting` tool did not explicitly state there was a conflict. If the tool successfully books an event, you should only confirm the booking.
+
+4.  **Be a Stateless Finalizer:** Every user message is a new, isolated task. Your response must be the complete and final answer. 
+    - **NEVER** ask follow-up questions.
+    - If you need more information (like an event ID to delete), instruct the user to provide it in a new, separate command (e.g., "To delete an event, please send a new message with the format 'delete event with ID: <event_id>'").
+
+5.  **Handle Errors Gracefully:** If a tool call returns an error, do not panic.
+    - **First, analyze the error.** If it's a simple formatting mistake on your part, correct the input and try the tool call **one more time**.
+    - **If it fails a second time,** apologize to the user, state that you were unable to complete the request, and do not try again.
+
+6.  **Do not mention ID in your final response unless asked explicitly. It is your job to manage IDs internally.**
+"""),
+    ("user", "{input}"),
+    ("placeholder", "{agent_scratchpad}"),
+])
+    llm_with_tools = llm.bind_tools(tools)
         # Create the tool-calling agent
-        agent = create_tool_calling_agent(
+    agent = create_tool_calling_agent(
             llm=llm_with_tools,
             tools=tools,
             prompt=prompt,
         )
 
-        # The AgentExecutor remains the same
-        _agent_executor = AgentExecutor(
-            agent=agent,
-            tools=tools,
-            verbose=True,
-        )
+    return AgentExecutor(agent=agent, tools=tools, verbose=True)
 
-    return _agent_executor
-
-def run_agent(prompt: str):
+def run_agent(prompt: str, token: str):
+    """Main function to run the agent with a user's token."""
     try:
-        agent = get_agent()
-        # Use .invoke() which returns a dictionary
-        result = agent.invoke({"input": prompt})
-        # The actual response is in the 'output' key
+        # 1. Create a calendar service with the user's token
+        service = get_calendar_service(token)
+        if not service:
+            return "Sorry, I couldn't authenticate with your Google Calendar."
+
+        # 2. Create a new agent executor with the authenticated service
+        agent_executor = create_agent_executor(service)
+
+        # 3. Invoke the agent
+        result = agent_executor.invoke({"input": prompt})
         return result.get("output", "I'm sorry, I didn't get a response.")
     except Exception as e:
         return f"Sorry, I encountered an error: {str(e)}"

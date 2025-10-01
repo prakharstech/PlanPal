@@ -1,7 +1,9 @@
+// src/Calendar.jsx
 import React from 'react';
 
-function GoogleCalendar() {
-  const calendarUrl = "https://calendar.google.com/calendar/embed?src=prakhar.srivastava0509%40gmail.com&ctz=Asia%2FKolkata";
+function GoogleCalendar({ userEmail }) {
+  // Use the user's email for the calendar source URL, or default if not available
+  const calendarUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(userEmail)}&ctz=Asia/Kolkata`;
 
   return (
     <div className="calendar-container">

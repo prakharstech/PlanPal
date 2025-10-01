@@ -1,24 +1,51 @@
 // src/App.jsx
-
 import React, { useState, useEffect, useRef } from 'react';
-import './App.css'; // Make sure you've updated App.css!
+import './App.css';
 import GoogleCalendar from './Calendar';
+import Login from './Login'; 
 
 function App() {
-  const [messages, setMessages] = useState([
-    // Start with a welcome message
-    {
-      role: 'assistant',
-      content: "Hello! I'm PlanPal. How can I help you with your calendar today?",
-    },
-  ]);
+  const [token, setToken] = useState(null); // <-- State to hold the auth token
+  const [user, setUser] = useState(null); // <-- State to hold user info
+  const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const messagesEndRef = useRef(null);
+  const [calendarKey, setCalendarKey] = useState(0);
+
+useEffect(() => {
+    if (user && user.name) {
+      // Get the user's first name for a more personal greeting
+      const firstName = user.name.split(' ')[0];
+      
+      setMessages([
+        {
+          role: 'assistant',
+          content: `Hello ${firstName}! I'm PlanPal. How can I help you with your calendar today?`,
+        },
+      ]);
+    }
+  }, [user]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+  
+
+
+  const handleLoginSuccess = (data) => {
+    //console.log("handleLoginSuccess received:", data);
+  //console.log("Setting token to:", data.token);
+    setToken(data.token);
+    setUser(data.user);
+  };
+
+  //console.log("App component rendered. Current token is:", token);
+  const handleLogout = () => {
+    setToken(null);
+    setUser(null);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -30,21 +57,22 @@ function App() {
     setIsLoading(true);
 
     try {
+      // IMPORTANT: Send the token in the Authorization header
       const res = await fetch("https://planpal-lrka.onrender.com/agent", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // <-- Send the token
+        },
         body: JSON.stringify({ message: inputValue }),
       });
-
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-
       const data = await res.json();
       const assistantMessage = {
         role: 'assistant',
         content: data.response || "Sorry, something went wrong.",
       };
       setMessages((prev) => [...prev, assistantMessage]);
-
     } catch (error) {
       console.error("Failed to fetch from agent:", error);
       const errorMessage = {
@@ -54,28 +82,40 @@ function App() {
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      setCalendarKey(prevKey => prevKey + 1);
     }
   };
 
+  const toggleCalendar = () => {
+    setShowCalendar(!showCalendar);
+  };
+
+  // If there's no token, show the Login component
+  if (!token) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // If logged in, show the main chat app
   return (
     <div className="chat-container">
       <div className="chat-window">
-        
-        <header className="header">
-          <div className="avatar">🤖</div>
-          <div className="bot-info">
-            <div className="bot-name">PlanPal</div>
-            <div className="status">Online</div>
+         <header className="header">
+          <div className="header-left">
+            <div className="avatar">🤖</div>
+            <div className="bot-info">
+              <div className="bot-name">PlanPal</div>
+              <div className="status">Online</div>
+            </div>
           </div>
+          <button onClick={handleLogout} className="logout-button">Logout</button>
         </header>
-
+        
         <div className="messages-list">
           {messages.map((msg, index) => (
             <div key={index} className={`message-container ${msg.role}`}>
               <div className={`message ${msg.role}`}>{msg.content}</div>
             </div>
           ))}
-
           {isLoading && (
             <div className="message-container assistant">
               <div className="message assistant loading-indicator">
@@ -83,10 +123,9 @@ function App() {
               </div>
             </div>
           )}
-          
           <div ref={messagesEndRef} />
         </div>
-
+        
         <form className="chat-input-form" onSubmit={handleSubmit}>
           <input
             type="text"
@@ -102,13 +141,17 @@ function App() {
             </svg>
           </button>
         </form>
-        
       </div>
-      <div className="calendar-view-container">
-        <GoogleCalendar />
+      
+      <div className={`calendar-view-container ${showCalendar ? 'show' : ''}`}>
+        {/* Pass user's email to the calendar component */}
+        <GoogleCalendar key={calendarKey} userEmail={user?.email} />
       </div>
+
+      <button className="view-toggle" onClick={toggleCalendar}>
+        {showCalendar ? '💬' : '📅'}
+      </button>
     </div>
-    
   );
 }
 
