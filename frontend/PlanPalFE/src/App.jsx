@@ -5,8 +5,8 @@ import GoogleCalendar from './Calendar';
 import Login from './Login'; 
 
 function App() {
-  const [token, setToken] = useState(null); // <-- State to hold the auth token
-  const [user, setUser] = useState(null); // <-- State to hold user info
+  const [token, setToken] = useState(null);
+  const [user, setUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -14,11 +14,19 @@ function App() {
   const messagesEndRef = useRef(null);
   const [calendarKey, setCalendarKey] = useState(0);
 
-useEffect(() => {
-    if (user && user.name) {
-      // Get the user's first name for a more personal greeting
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem('authToken');
+    const storedUser = localStorage.getItem('user');
+    if (storedToken && storedUser) {
+      setToken(storedToken);
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user && user.name && messages.length === 0) {
       const firstName = user.name.split(' ')[0];
-      
       setMessages([
         {
           role: 'assistant',
@@ -26,25 +34,24 @@ useEffect(() => {
         },
       ]);
     }
-  }, [user]);
+  }, [user, messages.length]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
   
-
-
   const handleLoginSuccess = (data) => {
-    //console.log("handleLoginSuccess received:", data);
-  //console.log("Setting token to:", data.token);
     setToken(data.token);
     setUser(data.user);
+    localStorage.setItem('authToken', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
   };
 
-  //console.log("App component rendered. Current token is:", token);
   const handleLogout = () => {
     setToken(null);
     setUser(null);
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
   };
 
   const handleSubmit = async (event) => {
@@ -57,12 +64,11 @@ useEffect(() => {
     setIsLoading(true);
 
     try {
-      // IMPORTANT: Send the token in the Authorization header
       const res = await fetch("https://planpal-lrka.onrender.com/agent", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}` // <-- Send the token
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ message: inputValue }),
       });
@@ -90,12 +96,10 @@ useEffect(() => {
     setShowCalendar(!showCalendar);
   };
 
-  // If there's no token, show the Login component
   if (!token) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // If logged in, show the main chat app
   return (
     <div className="chat-container">
       <div className="chat-window">
@@ -144,7 +148,6 @@ useEffect(() => {
       </div>
       
       <div className={`calendar-view-container ${showCalendar ? 'show' : ''}`}>
-        {/* Pass user's email to the calendar component */}
         <GoogleCalendar key={calendarKey} userEmail={user?.email} />
       </div>
 

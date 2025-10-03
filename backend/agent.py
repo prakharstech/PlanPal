@@ -238,7 +238,7 @@ Your sole purpose is to accurately and efficiently manage a user's Google Calend
     - **First, analyze the error.** If it's a simple formatting mistake on your part, correct the input and try the tool call **one more time**.
     - **If it fails a second time,** apologize to the user, state that you were unable to complete the request, and do not try again.
 
-6.  **Do not mention ID in your final response unless asked explicitly. It is your job to manage IDs internally.**
+6.  **Do not mention event ID in your final response unless asked explicitly. It is your job to manage IDs internally.**
 """),
     ("user", "{input}"),
     ("placeholder", "{agent_scratchpad}"),

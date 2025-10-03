@@ -1,6 +1,7 @@
 // src/Login.jsx
 import React from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
+import { Link } from 'react-router-dom';
 import './Login.css';
 
 function Login({ onLoginSuccess }) {
@@ -46,6 +47,9 @@ function Login({ onLoginSuccess }) {
           <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google logo" />
           Sign in with Google
         </button>
+        <p style={{ marginTop: '20px', fontSize: '12px' }}>
+          By signing in, you agree to our <Link to="/privacy">Privacy Policy</Link>.
+        </p>
       </div>
     </div>
   );
