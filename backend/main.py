@@ -54,6 +54,10 @@ GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 REDIRECT_URI = "postmessage"
 
 # --- API Endpoints ---
+@app.head("/")
+def health_check_head():
+    return
+
 @app.get("/")
 def health_check():
     return {"status": "ok", "message": "PlanPal backend is running!"}
