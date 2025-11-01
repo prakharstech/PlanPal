@@ -8,7 +8,10 @@ from typing import Optional
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 from google.oauth2 import id_token
-from google.auth.transport import requests
+import requests
+from google.auth.transport.requests import Request
+import os
+
 
 app = FastAPI()
 
@@ -46,41 +49,50 @@ SCOPES = [
 CLIENT_SECRET_FILE = 'client_secret.json'
 
 
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+REDIRECT_URI = "postmessage"
+
 # --- API Endpoints ---
 @app.get("/")
 def health_check():
     return {"status": "ok", "message": "PlanPal backend is running!"}
 
 @app.post("/auth/google")
-async def auth_google(auth_code: AuthCode):
-    """Exchanges an authorization code for user credentials and info."""
-    try:
-        flow = Flow.from_client_secrets_file(
-            CLIENT_SECRET_FILE,
-            scopes=SCOPES,
-            redirect_uri='https://plan-pal-ten.vercel.app'
-        )
-        flow.fetch_token(code=auth_code.code)
-        credentials = flow.credentials
+def google_auth(auth_code: AuthCode):
+
+    token_url = "https://oauth2.googleapis.com/token"
+
+    data = {
+        "code": auth_code.code,
+        "client_id": GOOGLE_CLIENT_ID,
+        "client_secret": GOOGLE_CLIENT_SECRET,
+        "redirect_uri": REDIRECT_URI,
+        "grant_type": "authorization_code"
+    }
+
+    r = requests.post(token_url, data=data)
+
+    if r.status_code != 200:
+        raise HTTPException(400, f"Token exchange failed: {r.text}")
+
+    tokens = r.json()
+
+    # Decode ID token
+    id_info = id_token.verify_oauth2_token(
+    tokens["id_token"],
+    Request(),            
+    GOOGLE_CLIENT_ID
+)
+
+
+    return {
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens.get("refresh_token"),
+        "email": id_info["email"],
+        "name": id_info["name"]
+    }
         
-        # Decode the ID token to get user info
-        request = requests.Request()
-        id_info = id_token.verify_oauth2_token(
-            credentials.id_token, request, flow.client_config['client_id']
-        )
-        
-        # Return both the access token and the user's email
-        return {
-            "token": credentials.token,
-            "user": {
-                "email": id_info.get("email"),
-                "name": id_info.get("name")
-            }
-        }
-        
-    except Exception as e:
-        print(f"!!! IMPORTANT OAUTH ERROR !!! ---> {e}")
-        raise HTTPException(status_code=400, detail=f"Failed to exchange auth code: {str(e)}")
 
 @app.post("/agent")
 async def calendar_agent(query: Query, authorization: Optional[str] = Header(None)):
