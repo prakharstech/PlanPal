@@ -7,35 +7,37 @@ import './Login.css';
 function Login({ onLoginSuccess }) {
 
   const handleLogin = useGoogleLogin({
-    flow: 'auth-code',
-    redirect_uri: 'https://plan-pal-ten.vercel.app',
+  flow: 'auth-code',
+  scope: "openid email profile https://www.googleapis.com/auth/calendar",
 
-    scope: 'https://www.googleapis.com/auth/calendar', 
-    
-    // The backend will handle the code exchange
-    onSuccess: async (codeResponse) => {
-      try {
-        const res = await fetch("https://planpal-lrka.onrender.com/auth/google", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: codeResponse.code }),
-        });
+  onSuccess: async (codeResponse) => {
+  try {
+    const res = await fetch("https://planpal-lrka.onrender.com/auth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: codeResponse.code }),
+    });
 
-        if (!res.ok) {
-          throw new Error(`Server error: ${res.status}`);
-        }
+    const data = await res.json();
 
-        const data = await res.json();
-        //console.log("Data received from backend:", data);
-        onLoginSuccess(data); // Passing the access_token to the App component
-      } catch (error) {
-        console.error("Failed to exchange auth code:", error);
+    // ✅ Transform backend → frontend expected format
+    onLoginSuccess({
+      token: data.access_token,
+      user: {
+        email: data.email,
+        name: data.name
       }
-    },
-    onError: (errorResponse) => {
-      console.error("Login Failed:", errorResponse);
-    },
-  });
+    });
+
+  } catch (error) {
+    console.error("Failed to exchange auth code:", error);
+  }
+},
+
+
+  onError: (err) => console.error(err),
+});
+
 
   return (
     <div className="login-container">
