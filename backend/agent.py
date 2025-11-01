@@ -1,4 +1,4 @@
-from langchain.agents import initialize_agent, AgentType, AgentExecutor
+from langchain.agents import AgentExecutor
 from langchain_core.tools import Tool
 from langchain_community.chat_models import ChatOpenAI
 # from langchain_openai import ChatOpenAI
