@@ -1,23 +1,25 @@
 # Backend
 fastapi
-uvicorn
+uvicorn[standard]
+pydantic
 
-# Frontend
+# Frontend (Old streamlit app)
 streamlit
 requests
 
 # Agent Framework
 langchain
 langchain-community
-openai
-langchain-mistralai
+langchain-openai     # For ChatOpenAI
+langchain-mistralai  # For ChatMistralAI
+langchain-groq       # For ChatGroq
+langgraph            # For create_react_agent
 
 # Google Calendar
 google-api-python-client
 google-auth
 google-auth-httplib2
 google-auth-oauthlib
-
 
 # Utilities
 python-dotenv
