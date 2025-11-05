@@ -52,6 +52,8 @@ function App() {
     setUser(null);
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
+    localStorage.clear()
+    setMessages([]);
   };
 
   const handleSubmit = async (event) => {
